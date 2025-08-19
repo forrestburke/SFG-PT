@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SFG-PT</title>
+<link rel="icon" href="https://i.pinimg.com/originals/0e/68/ed/0e68eda6243faa5f754b1cfb2b04846d.png">
+<style>
+/* --- Include all your previous CSS exactly as it was --- */
+* { box-sizing: border-box; margin:0; padding:0; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background:#f5f5f5; color:#333; }
+.dark body { background:#121212; color:#eee; }
+#headerImg { padding:12px 20px; background: #000; color: #fff; font-size:20px; text-align:center; border-radius:8px; margin:10px auto; }
+#headerImg img { height:40px; vertical-align: middle; margin-right:10px; }
+#headerImg span { vertical-align:middle; font-weight:bold; }
+#mainWrapper { display:flex; justify-content:center; width:100%; }
+#main { display:flex; max-width:1000px; width:100%; flex-direction:row; padding:10px; gap:10px; }
+#historyDrawer { width:260px; max-width:80vw; background:#fff; border-right:1px solid #FD5A1E; box-shadow: 2px 0 8px rgba(0,0,0,0.2); border-radius:8px; padding:20px; overflow-y:auto; flex-shrink:0; transition: transform 0.3s ease-in-out; max-height:calc(100vh - 40px); }
+#historyDrawer.dark { background:#1e1e1e; color:#eee; }
+#historyDrawer h3 { margin-bottom:10px; color:#FD5A1E; }
+#historyDrawer ul { list-style:none; margin:0; padding:0; }
+#historyDrawer li { padding:8px; margin-bottom:6px; background:#f0f0f0; border-radius:6px; cursor:pointer; }
+#historyDrawer li:hover { background:#FD5A1E; color:#fff; }
+#historyDrawer button { width:100%; margin-top:8px; padding:8px; background:#FD5A1E; color:#fff; border:none; border-radius:6px; cursor:pointer; }
+#container { flex:1; display:flex; flex-direction:column; padding:10px; }
+#chat { flex:1; overflow-y:auto; background:#fafafa; border:1px solid #ccc; border-radius:10px; padding:10px; margin-bottom:10px; position:relative; }
+.dark #chat { background:#1e1e1e; border-color:#333; }
+.message { margin:8px 0; padding:10px 14px; border-radius:18px; max-width:75%; word-wrap: break-word; }
+.user { background:#FD5A1E; color:white; margin-left:auto; }
+.assistant { background:white; color:black; }
+.dark .assistant { background:#333; color:white; }
+#typingIndicator { font-style:italic; color:#FD5A1E; margin:5px 0; display:none; }
+textarea, input, select { width:100%; padding:10px; border-radius:8px; margin-top:5px; border:1px solid #ccc; }
+button.action { background:#FD5A1E; color:white; border:none; padding:10px; border-radius:8px; margin-top:5px; cursor:pointer; width:48%; }
+button.action:hover { background:#e04f1a; }
+#btnRow { display:flex; gap:4%; flex-wrap:wrap; margin-bottom:5px; }
+#exportBtn { background:#FD5A1E; color:white; border:none; padding:10px; border-radius:8px; cursor:pointer; margin-bottom:5px; width:100%; }
+#exportBtn:hover { background:#e04f1a; }
+#fabHistory { position: fixed; bottom:20px; left:20px; width:50px; height:50px; background:#FD5A1E; border-radius:50%; color:white; font-size:24px; text-align:center; line-height:50px; cursor:pointer; z-index:10; box-shadow:2px 2px 8px rgba(0,0,0,0.3); }
+#imageSpinner { display:none; width:30px; height:30px; border:4px solid #f3f3f3; border-top:4px solid #FD5A1E; border-radius:50%; animation: spin 1s linear infinite; position:absolute; right:10px; top:10px; }
+@keyframes spin { 0%{transform:rotate(0deg);} 100%{transform:rotate(360deg);} }
+@media(max-width:768px){
+  #main { flex-direction:column; }
+  #historyDrawer { position:absolute; top:70px; left:0; width:80vw; height:calc(100% - 80px); transform: translateX(-100%); z-index:10; transition: transform 0.3s ease-in-out; }
+  #historyDrawer.open { transform: translateX(0); }
+}
+</style>
+</head>
+<body>
+<div id="headerImg">
+  <img src="https://i.pinimg.com/originals/0e/68/ed/0e68eda6243faa5f754b1cfb2b04846d.png" alt="Logo" />
+  <span>⚾ SFG-PT</span>
+</div>
+<div id="mainWrapper">
+  <div id="main">
+    <div id="historyDrawer" class="dark">
+      <h3>Previous Chats</h3>
+      <ul id="historyList"></ul>
+      <button onclick="newChat()">New Chat</button>
+    </div>
+    <div id="container">
+      <label>Current Chat Name: <input type="text" id="currentChatName" placeholder="Chat title..."></label>
+      <label>Model:
+        <select id="modelSelect">
+          <option value="gpt-5">GPT-5</option>
+          <option value="gpt-5-mini">GPT-5 Mini</option>
+          <option value="gpt-4o">GPT-4o</option>
+          <option value="gpt-3.5-turbo">GPT-3.5</option>
+        </select>
+      </label>
+      <label>Image Size:
+        <select id="imageSizeSelect">
+          <option>256x256</option>
+          <option>512x512</option>
+          <option selected>1024x1024</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="darkToggle"> Dark Mode</label>
+      <div id="chat"></div>
+      <div id="typingIndicator">GPT is thinking...</div>
+      <div id="imageSpinner"></div>
+      <button id="exportBtn">Export Chat</button>
+      <textarea id="userInput" placeholder="Type here..."></textarea>
+      <div id="btnRow">
+        <button class="action" id="sendBtn">Send</button>
+        <button class="action" id="imageBtn">Generate Image</button>
+      </div>
+      <div id="tokenCost"></div>
+    </div>
+  </div>
+</div>
+<div id="fabHistory" onclick="toggleHistory()">≡</div>
+
+<script>
+// --- JavaScript for chat and image generation ---
+const modelSelect = document.getElementById("modelSelect");
+const chatDiv = document.getElementById("chat");
+const userInput = document.getElementById("userInput");
+const darkToggle = document.getElementById("darkToggle");
+const historyList = document.getElementById("historyList");
+const imageSizeSelect = document.getElementById("imageSizeSelect");
+const sendBtn = document.getElementById("sendBtn");
+const imageBtn = document.getElementById("imageBtn");
+const currentChatNameInput = document.getElementById("currentChatName");
+const historyDrawer = document.getElementById("historyDrawer");
+const typingIndicator = document.getElementById("typingIndicator");
+const exportBtn = document.getElementById("exportBtn");
+const imageSpinner = document.getElementById("imageSpinner");
+const tokenCostDiv = document.getElementById("tokenCost");
+
+const costPerThousandTokens = { 'gpt-3.5-turbo':0.0004, 'gpt-4o':0.003, 'gpt-5':0.005, 'gpt-5-mini':0.003 };
+let chatHistory = JSON.parse(localStorage.getItem("chatHistory")||"[]");
+let currentChat = [];
+let currentChatName = "";
+let totalTokens=0;
+
+function toggleHistory() { historyDrawer.classList.toggle("open"); }
+
+function addMsg(role,text,isImage=false,imgUrl=""){
+  const div=document.createElement("div");
+  div.className="message "+(role==="user"?"user":"assistant");
+  if(isImage){
+    const img=document.createElement("img");
+    img.src=imgUrl;
+    img.style.maxWidth="100%";
+    img.style.borderRadius="6px";
+    img.style.opacity=0;
+    div.appendChild(img);
+    chatDiv.appendChild(div);
+    chatDiv.scrollTop=chatDiv.scrollHeight;
+    let opacity = 0;
+    const fade = setInterval(()=>{
+      opacity += 0.05;
+      img.style.opacity = opacity;
+      if(opacity>=1) clearInterval(fade);
+    },50);
+  } else { div.innerHTML=text.replace(/\n/g,"<br>"); chatDiv.appendChild(div); }
+  chatDiv.scrollTop=chatDiv.scrollHeight;
+  currentChat.push({role,text,isImage,imgUrl});
+}
+
+function updateTokenCost(tokensUsed){
+  totalTokens += tokensUsed;
+  const cost = (totalTokens/1000) * (costPerThousandTokens[modelSelect.value]||0);
+  tokenCostDiv.textContent = `Tokens: ${totalTokens} | Approx. Cost: $${cost.toFixed(5)}`;
+}
+
+async function sendMessage(){
+  const content = userInput.value.trim();
+  if(!content) return;
+  addMsg("user",content);
+  userInput.value="";
+  typingIndicator.style.display="block";
+
+  try {
+    const res = await fetch("/chat",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json"},
+      body:JSON.stringify({ message: content, model: modelSelect.value })
+    });
+    const data = await res.json();
+    typingIndicator.style.display="none";
+    if(data.error) addMsg("assistant","Error: "+data.error);
+    else{
+      addMsg("assistant",data.reply);
+      updateTokenCost(data.usage?.total_tokens||0);
+    }
+  } catch(err){
+    typingIndicator.style.display="none";
+    addMsg("assistant","Error: "+err.message);
+  }
+}
+
+async function generateImage(){
+  const prompt=userInput.value.trim();
+  if(!prompt) return;
+  addMsg("user",prompt);
+  userInput.value="";
+  imageSpinner.style.display="block";
+
+  try {
+    const res = await fetch("/image",{
+      method:"POST",
+      headers:{ "Content-Type":"application/json"},
+      body:JSON.stringify({ prompt, size: imageSizeSelect.value })
+    });
+    const data = await res.json();
+    imageSpinner.style.display="none";
+
+    if(data.error) addMsg("assistant","Image generation error: "+data.error);
+    else addMsg("assistant","",true,data.imageUrl);
+  } catch(err){
+    imageSpinner.style.display="none";
+    addMsg("assistant","Error: "+err.message);
+  }
+}
+
+function renderHistory(){
+  historyList.innerHTML="";
+  chatHistory.forEach((chat,index)=>{
+    const li=document.createElement("li");
+    li.textContent=chat.name;
+    li.onclick=()=>{
+      currentChat=chat.messages;
+      currentChatName=chat.name;
+      currentChatNameInput.value=currentChatName;
+      chatDiv.innerHTML="";
+      currentChat.forEach(m=> addMsg(m.role,m.text,m.isImage,m.imgUrl));
+      historyDrawer.classList.remove("open");
+    };
+    historyList.appendChild(li);
+  });
+}
+
+function newChat(){
+  if(currentChat.length>0){
+    if(!currentChatName) currentChatName = currentChat[0].text.slice(0,20)+"...";
+    chatHistory.push({name: currentChatName, messages: currentChat});
+    localStorage.setItem("chatHistory",JSON.stringify(chatHistory));
+    renderHistory();
+  }
+  chatDiv.innerHTML="";
+  currentChat=[];
+  currentChatName="";
+  currentChatNameInput.value="";
+  totalTokens=0;
+  tokenCostDiv.textContent="";
+}
+
+currentChatNameInput.addEventListener("input",()=>{ currentChatName=currentChatNameInput.value; });
+darkToggle.addEventListener("change",()=>{
+  document.body.classList.toggle("dark");
+  historyDrawer.classList.toggle("dark");
+});
+
+exportBtn.addEventListener("click",()=>{
+  if(currentChat.length===0){ alert("No messages to export."); return; }
+  let text="Chat: "+(currentChatName||"Untitled")+"\n\n";
+  currentChat.forEach(m=>{
+    if(m.isImage) text+=`${m.role.toUpperCase()}: [IMAGE] ${m.imgUrl}\n`;
+    else text+=`${m.role.toUpperCase()}: ${m.text}\n`;
+  });
+  const blob = new Blob([text],{type:"text/plain"});
+  const link = document.createElement("a");
+  link.href=URL.createObjectURL(blob);
+  link.download=(currentChatName||"chat")+".txt";
+  link.click();
+});
+
+window.onload = ()=> renderHistory();
+sendBtn.onclick = sendMessage;
+imageBtn.onclick = generateImage;
+userInput.addEventListener("keydown",(e)=>{
+  if(e.key==="Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+
+function toggleHistory(){ historyDrawer.classList.toggle("open"); }
+</script>
+</body>
+</html>
